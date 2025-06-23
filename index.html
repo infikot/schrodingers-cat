@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schrödinger's Cat</title>
+    <link rel="icon" href="https://github.githubassets.com/favicons/favicon-dark.svg" type="image/svg+xml">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        
+        :root {
+            --bg-color: #121212;
+            --primary-text-color: #e0e0e0;
+            --secondary-text-color: #b0b0b0;
+            --input-bg: #1e1e1e;
+            --input-border: #333;
+            --button-bg: #007bff;
+            --button-hover-bg: #0056b3;
+            --accent-color: #007bff;
+            --disabled-color: #434c5e;
+            --font-family: 'Inter', sans-serif;
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--primary-text-color);
+            font-family: var(--font-family);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        #back-to-hub {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: var(--secondary-text-color);
+            text-decoration: none;
+            font-weight: 700;
+            padding: 8px 12px;
+            border-radius: 8px;
+            background-color: rgba(255, 255, 255, 0.05);
+            transition: all 0.2s;
+            z-index: 102;
+        }
+        #back-to-hub:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: var(--primary-text-color);
+        }
+
+        .page-header {
+            position: fixed;
+            top: 0;
+            right: 0;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            padding: 0 20px;
+            height: 60px;
+            z-index: 102;
+        }
+        
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            height: 100vh;
+            text-align: center;
+        }
+        
+        .cat-simulator-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 30px;
+            width: 100%;
+            max-width: 700px;
+        }
+
+        #cat-status-display {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary-text-color);
+            min-height: 100px;
+            transition: opacity 0.5s;
+        }
+
+        .action-button {
+            padding: 15px 40px;
+            font-size: 1.5rem;
+            font-weight: 900;
+            background-color: var(--button-bg);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .action-button:hover {
+            background-color: var(--button-hover-bg);
+        }
+        
+        .top-nav { display: flex; align-items: center; gap: 20px; }
+        .lang-switcher a { color: var(--secondary-text-color); text-decoration: none; margin: 0 5px; font-weight: 700; padding: 5px; border-bottom: 2px solid transparent; transition: all 0.2s; }
+        .lang-switcher a.active { color: var(--primary-text-color); border-bottom-color: var(--accent-color); }
+        
+        .footer { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 100; }
+        #author-signature { color: var(--secondary-text-color); cursor: pointer; font-size: 0.9rem; padding: 5px 10px; transition: color 0.2s; }
+        #author-signature:hover { color: var(--primary-text-color); }
+        #links-popup { position: absolute; bottom: 120%; left: 50%; background-color: var(--input-bg); border: 1px solid var(--input-border); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 10px; opacity: 0; visibility: hidden; transform: translate(-50%, 10px); transition: opacity 0.3s ease, transform 0.3s ease, visibility 0s 0.3s; }
+        #links-popup.visible { opacity: 1; visibility: visible; transform: translate(-50%, 0); transition-delay: 0s; }
+        #links-popup a { color: var(--primary-text-color); text-decoration: none; padding: 8px 15px; display: block; border-radius: 5px; transition: background-color 0.2s; white-space: nowrap; }
+        #links-popup a:hover { background-color: rgba(255, 255, 255, 0.1); }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); display: flex; justify-content: center;
+            align-items: center; z-index: 1000; opacity: 0; visibility: hidden;
+            transition: opacity 0.3s, visibility 0s 0.3s;
+        }
+        .modal-overlay.visible { opacity: 1; visibility: visible; transition-delay: 0s; }
+        .modal-content {
+            position: relative; background: var(--input-bg); padding: 30px;
+            border-radius: 12px; transform: scale(0.9); transition: transform 0.3s;
+            width: 90%; max-width: 400px;
+        }
+        .modal-overlay.visible .modal-content { transform: scale(1); }
+        #modal-close-btn {
+            position: absolute; top: 10px; right: 15px; background: none;
+            border: none; font-size: 2rem; color: var(--secondary-text-color); cursor: pointer;
+        }
+        #action-list {
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        #action-list button {
+            width: 100%; text-align: left; padding: 15px; font-size: 1.1rem;
+            background-color: #2b2b2b;
+        }
+        #action-list button:hover:not(:disabled) { background-color: var(--accent-color); }
+        #action-list button:disabled {
+            background-color: var(--input-bg);
+            color: var(--disabled-color);
+            text-decoration: line-through;
+            cursor: not-allowed;
+        }
+
+        /* Toast Notifications */
+        #toast-container {
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            z-index: 1001;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: flex-end;
+        }
+        .toast {
+            background: rgba(30, 30, 30, 0.8);
+            backdrop-filter: blur(5px);
+            color: var(--secondary-text-color);
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid var(--input-border);
+            font-style: italic;
+            font-size: 0.9rem;
+            animation: toast-in 0.5s ease forwards;
+            opacity: 0;
+        }
+        .toast.fade-out { animation: toast-out 0.5s ease forwards; }
+        @keyframes toast-in {
+            from { opacity: 0; transform: translateX(100%); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes toast-out {
+            from { opacity: 1; transform: translateX(0); }
+            to { opacity: 0; transform: translateX(100%); }
+        }
+    </style>
+</head>
+<body>
+    <a href="https://infikot.github.io/" id="back-to-hub"></a>
+    <div class="page-header">
+        <div class="top-nav">
+            <div class="lang-switcher">
+                <a href="#" class="lang-btn" data-lang="ru">RU</a>
+                <a href="#" class="lang-btn" data-lang="en">EN</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="main-content">
+        <div class="cat-simulator-container">
+            <div id="cat-status-display"></div>
+            <button class="action-button" id="main-action-btn"></button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="action-modal">
+        <div class="modal-content">
+            <button id="modal-close-btn">×</button>
+            <div id="action-list"></div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <div class="footer">
+        <span id="author-signature">by infikot</span>
+        <div id="links-popup">
+             <a href="https://github.com/infikot" target="_blank">GitHub</a>
+             <a href="https://t.me/infinite_edit" target="_blank">Telegram</a>
+        </div>
+    </div>
+
+    <script>
+        // --- DICTIONARIES AND CONFIG ---
+        const i18n = {
+            ru: {
+                backToHub: "← На главную",
+                mainActionBtn: "Действие",
+                // Statuses
+                status_initial: "В комнате стоит коробка. Кажется, внутри что-то есть.",
+                status_present_content: "Кот сидит рядом и выглядит довольным.",
+                status_present_annoyed: "Кот смотрит на вас с осуждением.",
+                status_present_hungry: "Кот трётся о ваши ноги и жалобно мяукает.",
+                status_present_sleeping: "Кот спит, свернувшись в клубок.",
+                status_in_box: "Коробка закрыта. Кот внутри... или нет.",
+                status_box_opened_alive: "Вы открыли коробку. Внутри сидит живой и недовольный кот.",
+                status_box_opened_gone: "Вы открыли коробку. Она пуста.",
+                status_gone_ran_away: "Вы слишком долго игнорировали кота, и он ушёл искать новый дом. Игра окончена.",
+                status_gone_overfed: "Вы перекормили кота. Он превратился в маленькую чёрную дыру и коллапсировал. Игра окончена.",
+                status_gone_ascended: "Кот достиг нирваны и вознёсся на высший план бытия. Игра окончена.",
+                status_gone_bored: "Коту стало скучно, и он просто ушёл. Игра окончена.",
+                status_bite: "АЙ! Кот вас укусил за излишнюю навязчивость.",
+                status_gift: "Кот принёс вам подарок: идеально откомпилированный, но абсолютно бесполезный скрипт.",
+                // Actions
+                action_pet: "Погладить кота",
+                action_feed: "Покормить кота",
+                action_play: "Поиграть с котом",
+                action_observe: "Наблюдать за котом",
+                action_close_box: "Закрыть коробку",
+                action_open_box: "Открыть коробку",
+                action_wait: "Подождать",
+                action_restart: "Начать сначала",
+                // Toasts (Thoughts)
+                toast_pet_good: "Какой он мягкий...",
+                toast_pet_bad: "Может, не стоило его трогать?",
+                toast_feed_normal: "Надеюсь, ему понравится.",
+                toast_feed_overfeed: "Я думаю, он переест... Стоит ли его столько кормить?",
+                toast_play: "Интересно, ему весело?",
+                toast_observe: "Он такой загадочный.",
+                toast_close_box: "Эксперимент начался.",
+                toast_open_box: "Пора узнать правду.",
+                toast_wait: "Время идёт. Что происходит внутри?",
+            },
+            en: {
+                backToHub: "← Back to Hub",
+                mainActionBtn: "Action",
+                // Statuses
+                status_initial: "There is a box in the room. It seems there is something inside.",
+                status_present_content: "The cat is sitting nearby and looks content.",
+                status_present_annoyed: "The cat is giving you a judgmental look.",
+                status_present_hungry: "The cat is rubbing against your legs and meowing pitifully.",
+                status_present_sleeping: "The cat is sleeping, curled up in a ball.",
+                status_in_box: "The box is closed. The cat is inside... or not.",
+                status_box_opened_alive: "You opened the box. A living and displeased cat is sitting inside.",
+                status_box_opened_gone: "You opened the box. It's empty.",
+                status_gone_ran_away: "You ignored the cat for too long, and it left to find a new home. Game over.",
+                status_gone_overfed: "You overfed the cat. It turned into a small black hole and collapsed. Game over.",
+                status_gone_ascended: "The cat has achieved nirvana and ascended to a higher plane of existence. Game over.",
+                status_gone_bored: "The cat got bored and just left. Game over.",
+                status_bite: "OUCH! The cat bit you for being too intrusive.",
+                status_gift: "The cat brought you a gift: a perfectly compiled but utterly useless script.",
+                // Actions
+                action_pet: "Pet the cat",
+                action_feed: "Feed the cat",
+                action_play: "Play with the cat",
+                action_observe: "Observe the cat",
+                action_close_box: "Close the box",
+                action_open_box: "Open the box",
+                action_wait: "Wait",
+                action_restart: "Start over",
+                // Toasts (Thoughts)
+                toast_pet_good: "So soft...",
+                toast_pet_bad: "Maybe I shouldn't have touched it?",
+                toast_feed_normal: "I hope it likes it.",
+                toast_feed_overfeed: "I think it's overeating... Should I feed it this much?",
+                toast_play: "Is it having fun, I wonder?",
+                toast_observe: "So mysterious.",
+                toast_close_box: "The experiment has begun.",
+                toast_open_box: "Time to find out the truth.",
+                toast_wait: "Time passes. What is happening inside?",
+            }
+        };
+
+        // --- DOM ELEMENTS ---
+        const backToHubBtn = document.getElementById('back-to-hub');
+        const catStatusDisplay = document.getElementById('cat-status-display');
+        const mainActionBtn = document.getElementById('main-action-btn');
+        const actionModal = document.getElementById('action-modal');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+        const actionList = document.getElementById('action-list');
+        const toastContainer = document.getElementById('toast-container');
+
+        // --- GAME STATE ---
+        let currentLang = localStorage.getItem('preferredLang') || 'ru';
+        let catState;
+
+        function getInitialState() {
+            return {
+                presence: 'in_box', // 'in_box', 'present', 'gone'
+                isBoxClosed: true,
+                mood: 'content', // 'content', 'annoyed', 'hungry', 'sleeping', 'playful'
+                hunger: 50, // 0-100
+                affection: 50, // 0-100
+                consecutivePats: 0,
+                feedCount: 0,
+                ignoreCount: 0,
+                isGameOver: false,
+                lastStatusKey: 'status_initial'
+            };
+        }
+
+        // --- ACTIONS LOGIC ---
+        const actions = [
+            {
+                id: 'pet',
+                isAvailable: state => state.presence === 'present' && !state.isGameOver,
+                execute: state => {
+                    if (state.mood === 'sleeping') {
+                        state.mood = 'annoyed';
+                        state.affection -= 10;
+                        state.consecutivePats = 0;
+                        showToast(i18n[currentLang].toast_pet_bad);
+                        return;
+                    }
+                    if (state.mood === 'annoyed' || state.consecutivePats >= 2) {
+                        state.lastStatusKey = 'status_bite';
+                        state.affection -= 15;
+                        state.consecutivePats = 0;
+                        showToast(i18n[currentLang].toast_pet_bad);
+                    } else {
+                        state.affection += 10;
+                        state.consecutivePats++;
+                        showToast(i18n[currentLang].toast_pet_good);
+                    }
+                }
+            },
+            {
+                id: 'feed',
+                isAvailable: state => state.presence === 'present' && !state.isGameOver,
+                execute: state => {
+                    state.hunger += 30;
+                    state.feedCount++;
+                    state.consecutivePats = 0;
+                    if (state.feedCount > 4) {
+                        state.lastStatusKey = 'status_gone_overfed';
+                        state.isGameOver = true;
+                    } else if (state.feedCount > 2) {
+                        showToast(i18n[currentLang].toast_feed_overfeed);
+                    } else {
+                        showToast(i18n[currentLang].toast_feed_normal);
+                    }
+                }
+            },
+            {
+                id: 'play',
+                isAvailable: state => state.presence === 'present' && state.mood !== 'sleeping' && !state.isGameOver,
+                execute: state => {
+                    state.mood = 'playful';
+                    state.affection += 15;
+                    state.hunger -= 10;
+                    state.consecutivePats = 0;
+                    showToast(i18n[currentLang].toast_play);
+                }
+            },
+            {
+                id: 'observe',
+                isAvailable: state => state.presence === 'present' && !state.isGameOver,
+                execute: state => {
+                    showToast(i18n[currentLang].toast_observe);
+                    if (state.affection > 80 && Math.random() > 0.7) {
+                        state.lastStatusKey = 'status_gift';
+                        state.affection = 100;
+                    }
+                }
+            },
+            {
+                id: 'close_box',
+                isAvailable: state => state.presence === 'present' && !state.isBoxClosed && !state.isGameOver,
+                execute: state => {
+                    state.isBoxClosed = true;
+                    state.presence = 'in_box';
+                    showToast(i18n[currentLang].toast_close_box);
+                }
+            },
+            {
+                id: 'open_box',
+                isAvailable: state => state.isBoxClosed && !state.isGameOver,
+                execute: state => {
+                    state.isBoxClosed = false;
+                    if (Math.random() > 0.5) {
+                        state.presence = 'present';
+                        state.mood = 'annoyed';
+                        state.lastStatusKey = 'status_box_opened_alive';
+                    } else {
+                        state.presence = 'gone';
+                        state.lastStatusKey = 'status_box_opened_gone';
+                        state.isGameOver = true;
+                    }
+                    showToast(i18n[currentLang].toast_open_box);
+                }
+            },
+            {
+                id: 'wait',
+                isAvailable: state => !state.isGameOver,
+                execute: state => {
+                    state.ignoreCount++;
+                    state.consecutivePats = 0;
+                    if (state.presence === 'in_box') {
+                        showToast(i18n[currentLang].toast_wait);
+                        if (Math.random() > 0.8) {
+                            state.lastStatusKey = 'status_gone_ascended';
+                            state.isGameOver = true;
+                        }
+                    } else if (state.presence === 'present') {
+                        state.hunger -= 5;
+                        if (state.ignoreCount > 5) {
+                            state.lastStatusKey = 'status_gone_ran_away';
+                            state.isGameOver = true;
+                        } else if (state.ignoreCount > 3) {
+                            state.lastStatusKey = 'status_gone_bored';
+                            state.isGameOver = true;
+                        }
+                    }
+                }
+            },
+            {
+                id: 'restart',
+                isAvailable: state => state.isGameOver,
+                execute: state => {
+                    catState = getInitialState();
+                }
+            }
+        ];
+
+        // --- UI & GAME LOOP ---
+        function updateStatus() {
+            const state = catState;
+            let statusKey = state.lastStatusKey;
+
+            if (!state.isGameOver && state.presence === 'present') {
+                if (state.hunger < 30) statusKey = 'status_present_hungry';
+                else if (state.mood === 'sleeping') statusKey = 'status_present_sleeping';
+                else if (state.mood === 'annoyed' || state.affection < 40) statusKey = 'status_present_annoyed';
+                else statusKey = 'status_present_content';
+            } else if (!state.isGameOver && state.presence === 'in_box') {
+                statusKey = 'status_in_box';
+            }
+            
+            catStatusDisplay.style.opacity = 0;
+            setTimeout(() => {
+                catStatusDisplay.textContent = i18n[currentLang][statusKey] || "???";
+                catStatusDisplay.style.opacity = 1;
+            }, 300);
+        }
+
+        function openActionModal() {
+            actionList.innerHTML = '';
+            actions.forEach(action => {
+                const button = document.createElement('button');
+                button.textContent = i18n[currentLang]['action_' + action.id];
+                button.disabled = !action.isAvailable(catState);
+                button.addEventListener('click', () => {
+                    action.execute(catState);
+                    updateStatus();
+                    closeActionModal();
+                });
+                actionList.appendChild(button);
+            });
+            actionModal.classList.add('visible');
+        }
+
+        function closeActionModal() {
+            actionModal.classList.remove('visible');
+        }
+
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            toastContainer.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('fade-out');
+                setTimeout(() => toast.remove(), 500);
+            }, 4000);
+        }
+
+        function updateLanguage() {
+            currentLang = localStorage.getItem('preferredLang') || 'ru';
+            document.documentElement.lang = currentLang;
+            const t = i18n[currentLang];
+            
+            backToHubBtn.textContent = t.backToHub;
+            mainActionBtn.textContent = t.mainActionBtn;
+            updateStatus();
+        }
+
+        function init() {
+            catState = getInitialState();
+
+            mainActionBtn.addEventListener('click', openActionModal);
+            modalCloseBtn.addEventListener('click', closeActionModal);
+            actionModal.addEventListener('click', (e) => {
+                if (e.target === actionModal) closeActionModal();
+            });
+
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.addEventListener('click', e => {
+                    e.preventDefault();
+                    localStorage.setItem('preferredLang', e.target.dataset.lang);
+                    updateLanguage();
+                });
+            });
+            
+            document.getElementById('author-signature').addEventListener('click', (e) => {
+                e.stopPropagation();
+                document.getElementById('links-popup').classList.toggle('visible');
+            });
+            document.addEventListener('click', (e) => {
+                const popup = document.getElementById('links-popup');
+                if (!popup.contains(e.target) && e.target.id !== 'author-signature') {
+                    popup.classList.remove('visible');
+                }
+            });
+
+            updateLanguage();
+        }
+
+        init();
+    </script>
+</body>
+</html>
