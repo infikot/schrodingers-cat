@@ -75,6 +75,7 @@
             padding: 20px;
             height: 100vh;
             text-align: center;
+            position: relative;
         }
         
         .cat-simulator-container {
@@ -85,6 +86,8 @@
             gap: 30px;
             width: 100%;
             max-width: 700px;
+            position: relative;
+            z-index: 10;
         }
 
         #cat-status-display {
@@ -146,54 +149,42 @@
         #action-list button {
             width: 100%; text-align: left; padding: 15px; font-size: 1.1rem;
             background-color: #2b2b2b;
-            transition: background-color 0.2s, filter 0.3s;
         }
-        #action-list button:hover:not(:disabled) { background-color: var(--accent-color); }
-        #action-list button.action-untried {
-            filter: blur(1.5px);
-        }
-        #action-list button:hover:not(:disabled).action-untried {
-            filter: blur(0);
-        }
-        #action-list button:disabled {
-            background-color: var(--input-bg);
-            color: var(--disabled-color);
-            text-decoration: line-through;
-            cursor: not-allowed;
-            filter: blur(2px);
-        }
+        #action-list button:hover { background-color: var(--accent-color); }
 
         /* Toast Notifications */
         #toast-container {
-            position: fixed;
-            top: 70px;
-            right: 20px;
-            z-index: 1001;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            align-items: flex-end;
+            position: fixed; top: 70px; right: 20px; z-index: 1001;
+            display: flex; flex-direction: column; gap: 10px; align-items: flex-end;
         }
         .toast {
-            background: rgba(30, 30, 30, 0.8);
-            backdrop-filter: blur(5px);
-            color: var(--secondary-text-color);
-            padding: 10px 15px;
-            border-radius: 8px;
-            border: 1px solid var(--input-border);
-            font-style: italic;
-            font-size: 0.9rem;
-            animation: toast-in 0.5s ease forwards;
-            opacity: 0;
+            background: rgba(30, 30, 30, 0.8); backdrop-filter: blur(5px);
+            color: var(--secondary-text-color); padding: 10px 15px; border-radius: 8px;
+            border: 1px solid var(--input-border); font-style: italic; font-size: 0.9rem;
+            animation: toast-in 0.5s ease forwards; opacity: 0;
         }
         .toast.fade-out { animation: toast-out 0.5s ease forwards; }
-        @keyframes toast-in {
-            from { opacity: 0; transform: translateX(100%); }
-            to { opacity: 1; transform: translateX(0); }
+        @keyframes toast-in { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes toast-out { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(100%); } }
+
+        /* Ambient Text */
+        #ambient-text-container {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; overflow: hidden;
         }
-        @keyframes toast-out {
-            from { opacity: 1; transform: translateX(0); }
-            to { opacity: 0; transform: translateX(100%); }
+        .ambient-text {
+            position: absolute;
+            font-style: italic;
+            font-size: 1.5rem;
+            color: var(--secondary-text-color);
+            opacity: 0;
+            animation: fly-and-fade 3s ease-in-out;
+        }
+        @keyframes fly-and-fade {
+            0% { opacity: 0; transform: translateY(20px) scale(0.8); }
+            20% { opacity: 0.7; transform: translateY(0) scale(1); }
+            80% { opacity: 0.7; transform: translateY(-20px) scale(1); }
+            100% { opacity: 0; transform: translateY(-40px) scale(1.2); }
         }
     </style>
 </head>
@@ -209,6 +200,7 @@
     </div>
     
     <div class="main-content">
+        <div id="ambient-text-container"></div>
         <div class="cat-simulator-container">
             <div id="cat-status-display"></div>
             <button class="action-button" id="main-action-btn"></button>
@@ -245,6 +237,8 @@
                 status_present_sleeping: "Кот спит, свернувшись в клубок.",
                 status_present_playing: "Кот гоняется за невидимой точкой на стене.",
                 status_present_gazing: "Кот сидит у окна и смотрит на что-то вдалеке.",
+                status_present_hiding: "Кот куда-то пропал. Слышно тихое шуршание из-под дивана.",
+                status_present_biscuits: "Кот ритмично мнёт лапками плед, погрузившись в транс.",
                 status_in_box: "Коробка закрыта. Кот внутри... или нет.",
                 status_box_opened_alive: "Вы открыли коробку. Внутри сидит живой и недовольный кот.",
                 status_box_opened_gone: "Вы открыли коробку. Она пуста.",
@@ -261,16 +255,21 @@
                 status_gone_yarn_portal: "Игрушка завибрировала и открыла портал в измерение бесконечной пряжи. Кот прыгнул внутрь не раздумывая. Игра окончена.",
                 status_gone_window: "Насмотревшись в окно, кот познал суть свободы и выпрыгнул навстречу приключениям. Игра окончена.",
                 status_gone_normal: "После всех ваших действий кот стал... обычным котом. Он спит, ест и игнорирует вас. Эксперимент провалился. Игра окончена.",
+                status_gone_landlord: "Кот нашёл ваши документы на квартиру и теперь требует арендную плату. Вы выселены. Игра окончена.",
+                status_gone_cult: "Плед оказался артефактом. Кот основал культ и теперь его последователи смотрят на вас с осуждением. Игра окончена.",
                 // Actions
                 action_pet: "Погладить кота", action_feed: "Покормить кота", action_play: "Поиграть с котом", action_observe: "Наблюдать за котом",
                 action_close_box: "Закрыть коробку", action_open_box: "Открыть коробку", action_wait: "Подождать", action_restart: "Начать сначала",
                 action_give_toy: "Дать игрушку", action_look_out_window: "Смотреть в окно", action_teach_trick: "Попытаться научить трюку", action_meditate: "Медитировать вместе",
+                action_look_under_sofa: "Искать под диваном", action_offer_blanket: "Предложить плед",
                 // Toasts (Thoughts)
                 toast_pet_good: "Какой он мягкий...", toast_pet_bad: "Может, не стоило его трогать?", toast_feed_normal: "Надеюсь, ему понравится.",
                 toast_feed_overfeed: "Я думаю, он переест... Стоит ли его столько кормить?", toast_play: "Интересно, ему весело?", toast_observe: "Он такой загадочный.",
                 toast_close_box: "Эксперимент начался.", toast_open_box: "Пора узнать правду.", toast_wait: "Время идёт. Что происходит внутри?",
                 toast_give_toy: "Вот, держи. Надеюсь, это не квантовая граната.", toast_look_out_window: "Что же он там видит?",
-                toast_teach_trick: "А вдруг получится?", toast_meditate: "Оммм... или Мяууу...?",
+                toast_teach_trick: "А вдруг получится?", toast_meditate: "Оммм... или Мяууу...?", toast_look_under_sofa: "Ага, вот ты где!", toast_offer_blanket: "Может, это его успокоит.",
+                // Ambient texts
+                ambient_meow: "*Мяу*", ambient_purr: "*Муррр*", ambient_scratch: "*Царап-царап*", ambient_zoomies: "*Тыгыдык-тыгыдык*",
             },
             en: {
                 backToHub: "← Back to Hub", mainActionBtn: "Action",
@@ -278,7 +277,8 @@
                 status_initial: "There is a box in the room. It seems there is something inside.", status_present_content: "The cat is sitting nearby and looks content.",
                 status_present_annoyed: "The cat is giving you a judgmental look.", status_present_hungry: "The cat is rubbing against your legs and meowing pitifully.",
                 status_present_sleeping: "The cat is sleeping, curled up in a ball.", status_present_playing: "The cat is chasing an invisible dot on the wall.",
-                status_present_gazing: "The cat is sitting by the window, staring at something in the distance.", status_in_box: "The box is closed. The cat is inside... or not.",
+                status_present_gazing: "The cat is sitting by the window, staring at something in the distance.", status_present_hiding: "The cat is gone. A faint rustling can be heard from under the sofa.",
+                status_present_biscuits: "The cat is rhythmically kneading a blanket, lost in a trance.", status_in_box: "The box is closed. The cat is inside... or not.",
                 status_box_opened_alive: "You opened the box. A living and displeased cat is sitting inside.", status_box_opened_gone: "You opened the box. It's empty.",
                 status_bite: "OUCH! The cat bit you for being too intrusive.", status_gift: "The cat brought you a gift: a perfectly compiled but utterly useless script.",
                 status_trick_fail: "The cat looked at you, at the treat, and pointedly turned away.", status_trick_success: "Incredible! The cat performed the trick. It did a somersault and landed back in a superposition.",
@@ -289,16 +289,21 @@
                 status_gone_yarn_portal: "The toy vibrated and opened a portal to the dimension of infinite yarn. The cat leaped in without hesitation. Game over.",
                 status_gone_window: "After gazing out the window, the cat understood the essence of freedom and jumped out to seek adventure. Game over.",
                 status_gone_normal: "After all your actions, the cat became... a normal cat. It sleeps, eats, and ignores you. The experiment has failed. Game over.",
+                status_gone_landlord: "The cat found your apartment lease and is now demanding rent. You have been evicted. Game over.",
+                status_gone_cult: "The blanket turned out to be an artifact. The cat has founded a cult, and its followers now stare at you with judgment. Game over.",
                 // Actions
                 action_pet: "Pet the cat", action_feed: "Feed the cat", action_play: "Play with the cat", action_observe: "Observe the cat",
                 action_close_box: "Close the box", action_open_box: "Open the box", action_wait: "Wait", action_restart: "Start over",
                 action_give_toy: "Give toy", action_look_out_window: "Look out the window", action_teach_trick: "Try to teach a trick", action_meditate: "Meditate together",
+                action_look_under_sofa: "Look under the sofa", action_offer_blanket: "Offer a blanket",
                 // Toasts (Thoughts)
                 toast_pet_good: "So soft...", toast_pet_bad: "Maybe I shouldn't have touched it?", toast_feed_normal: "I hope it likes it.",
                 toast_feed_overfeed: "I think it's overeating... Should I feed it this much?", toast_play: "Is it having fun, I wonder?", toast_observe: "So mysterious.",
                 toast_close_box: "The experiment has begun.", toast_open_box: "Time to find out the truth.", toast_wait: "Time passes. What is happening inside?",
                 toast_give_toy: "Here you go. Hope it's not a quantum grenade.", toast_look_out_window: "What does it see out there?",
-                toast_teach_trick: "What if it works?", toast_meditate: "Ommm... or Meooow...?",
+                toast_teach_trick: "What if it works?", toast_meditate: "Ommm... or Meooow...?", toast_look_under_sofa: "Aha, there you are!", toast_offer_blanket: "Maybe this will calm it down.",
+                // Ambient texts
+                ambient_meow: "*Meow*", ambient_purr: "*Purrr*", ambient_scratch: "*Scratch-scratch*", ambient_zoomies: "*Zoom-zoom*",
             }
         };
 
@@ -310,33 +315,84 @@
         const modalCloseBtn = document.getElementById('modal-close-btn');
         const actionList = document.getElementById('action-list');
         const toastContainer = document.getElementById('toast-container');
+        const ambientTextContainer = document.getElementById('ambient-text-container');
 
         // --- GAME STATE ---
         let currentLang = localStorage.getItem('preferredLang') || 'ru';
         let catState;
+        let ambientTimer;
 
         function getInitialState() {
             return {
                 presence: 'in_box', isBoxClosed: true, mood: 'content', hunger: 50, affection: 50,
-                consecutivePats: 0, feedCount: 0, ignoreCount: 0, weirdness: 0, toyAffection: 0, windowGazing: 0,
-                isGameOver: false, lastStatusKey: 'status_initial', usedActions: new Set()
+                consecutivePats: 0, feedCount: 0, ignoreCount: 0, weirdness: 0, toyAffection: 0, windowGazing: 0, blanketLove: 0,
+                isGameOver: false, lastStatusKey: 'status_initial'
             };
         }
 
         // --- ACTIONS LOGIC ---
         const actions = [
-            { id: 'pet', isAvailable: s => s.presence === 'present' && !s.isGameOver, execute(s) { if (s.mood === 'sleeping') { s.mood = 'annoyed'; s.affection -= 10; showToast(i18n[currentLang].toast_pet_bad); } else if (s.mood === 'annoyed' || s.consecutivePats >= 2) { s.lastStatusKey = 'status_bite'; s.affection -= 15; showToast(i18n[currentLang].toast_pet_bad); } else { s.affection += 10; showToast(i18n[currentLang].toast_pet_good); } s.consecutivePats++; }},
-            { id: 'feed', isAvailable: s => s.presence === 'present' && !s.isGameOver, execute(s) { s.hunger += 30; s.feedCount++; if (s.feedCount > 4) { s.lastStatusKey = 'status_gone_overfed'; s.isGameOver = true; } else if (s.feedCount > 2) { showToast(i18n[currentLang].toast_feed_overfeed); } else { showToast(i18n[currentLang].toast_feed_normal); } }},
-            { id: 'play', isAvailable: s => s.presence === 'present' && s.mood !== 'sleeping' && !s.isGameOver, execute(s) { s.mood = 'playful'; s.affection += 15; s.hunger -= 10; showToast(i18n[currentLang].toast_play); }},
-            { id: 'observe', isAvailable: s => s.presence === 'present' && !s.isGameOver, execute(s) { showToast(i18n[currentLang].toast_observe); if (s.affection > 80 && Math.random() > 0.7) { s.lastStatusKey = 'status_gift'; s.affection = 100; } }},
-            { id: 'give_toy', isAvailable: s => s.presence === 'present' && !s.isGameOver, execute(s) { s.toyAffection += 25; s.mood = 'playful'; showToast(i18n[currentLang].toast_give_toy); if (s.toyAffection > 80 && s.weirdness > 50) { s.lastStatusKey = 'status_gone_yarn_portal'; s.isGameOver = true; } }},
-            { id: 'look_out_window', isAvailable: s => s.presence === 'present' && !s.isGameOver, execute(s) { s.mood = 'gazing'; s.windowGazing++; showToast(i18n[currentLang].toast_look_out_window); if (s.windowGazing > 4) { s.lastStatusKey = 'status_gone_window'; s.isGameOver = true; } }},
-            { id: 'teach_trick', isAvailable: s => s.presence === 'present' && s.mood === 'playful' && !s.isGameOver, execute(s) { showToast(i18n[currentLang].toast_teach_trick); if (s.affection > 70 && Math.random() > 0.8) { s.lastStatusKey = 'status_trick_success'; s.weirdness += 30; } else { s.lastStatusKey = 'status_trick_fail'; s.mood = 'annoyed'; } }},
-            { id: 'meditate', isAvailable: s => !s.isGameOver, execute(s) { s.weirdness += 15; showToast(i18n[currentLang].toast_meditate); if (s.weirdness > 100) { s.lastStatusKey = 'status_gone_paradox'; s.isGameOver = true; } }},
-            { id: 'close_box', isAvailable: s => s.presence === 'present' && !s.isBoxClosed && !s.isGameOver, execute(s) { s.isBoxClosed = true; s.presence = 'in_box'; showToast(i18n[currentLang].toast_close_box); }},
-            { id: 'open_box', isAvailable: s => s.isBoxClosed && !s.isGameOver, execute(s) { s.isBoxClosed = false; if (Math.random() > 0.5) { s.presence = 'present'; s.mood = 'annoyed'; s.lastStatusKey = 'status_box_opened_alive'; } else { s.presence = 'gone'; s.lastStatusKey = 'status_box_opened_gone'; s.isGameOver = true; } showToast(i18n[currentLang].toast_open_box); }},
-            { id: 'wait', isAvailable: s => !s.isGameOver, execute(s) { s.ignoreCount++; s.consecutivePats = 0; if (s.presence === 'in_box') { showToast(i18n[currentLang].toast_wait); if (Math.random() > 0.8) { s.lastStatusKey = 'status_gone_ascended'; s.isGameOver = true; } } else if (s.presence === 'present') { s.hunger -= 5; if (s.affection < 20 && s.ignoreCount > 3) { s.lastStatusKey = 'status_gone_ran_away'; s.isGameOver = true; } else if (s.ignoreCount > 5) { s.lastStatusKey = 'status_gone_bored'; s.isGameOver = true; } else if (s.affection > 90 && s.hunger > 90 && s.weirdness < 10) { s.lastStatusKey = 'status_gone_normal'; s.isGameOver = true; } } }},
-            { id: 'restart', isAvailable: s => s.isGameOver, execute(s) { catState = getInitialState(); }}
+            { id: 'pet', isAvailable: s => s.presence === 'present' && !s.isGameOver, execute(s) {
+                if (s.mood === 'sleeping') { s.mood = 'annoyed'; s.affection -= 10; showToast(i18n[currentLang].toast_pet_bad); } 
+                else if (s.mood === 'annoyed' || s.consecutivePats >= 2) { s.lastStatusKey = 'status_bite'; s.affection -= 15; showToast(i18n[currentLang].toast_pet_bad); } 
+                else { s.affection += 10; showToast(i18n[currentLang].toast_pet_good); } 
+                s.consecutivePats++; 
+            }},
+            { id: 'feed', isAvailable: s => s.presence === 'present' && !s.isGameOver, execute(s) {
+                s.hunger += 30; s.feedCount++; 
+                if (s.feedCount > 4) { s.lastStatusKey = 'status_gone_overfed'; s.isGameOver = true; } 
+                else if (s.feedCount > 2) { showToast(i18n[currentLang].toast_feed_overfeed); } 
+                else { showToast(i18n[currentLang].toast_feed_normal); } 
+            }},
+            { id: 'play', isAvailable: s => s.presence === 'present' && s.mood !== 'sleeping' && !s.isGameOver, execute(s) {
+                s.mood = 'playful'; s.affection += 15; s.hunger -= 10; showToast(i18n[currentLang].toast_play); 
+            }},
+            { id: 'observe', isAvailable: s => s.presence === 'present' && !s.isGameOver, execute(s) {
+                showToast(i18n[currentLang].toast_observe); 
+                if (s.affection > 80 && Math.random() > 0.7) { s.lastStatusKey = 'status_gift'; s.affection = 100; } 
+                else if (s.weirdness > 60 && Math.random() > 0.8) { s.lastStatusKey = 'status_gone_landlord'; s.isGameOver = true; }
+            }},
+            { id: 'give_toy', isAvailable: s => s.presence === 'present' && !s.isGameOver, execute(s) {
+                s.toyAffection += 25; s.mood = 'playful'; showToast(i18n[currentLang].toast_give_toy); 
+                if (s.toyAffection > 80 && s.weirdness > 50) { s.lastStatusKey = 'status_gone_yarn_portal'; s.isGameOver = true; } 
+            }},
+            { id: 'offer_blanket', isAvailable: s => s.presence === 'present' && !s.isGameOver, execute(s) {
+                s.blanketLove += 20; s.mood = 'biscuits'; showToast(i18n[currentLang].toast_offer_blanket);
+                if (s.blanketLove > 90) { s.lastStatusKey = 'status_gone_cult'; s.isGameOver = true; }
+            }},
+            { id: 'look_out_window', isAvailable: s => s.presence === 'present' && !s.isGameOver, execute(s) {
+                s.mood = 'gazing'; s.windowGazing++; showToast(i18n[currentLang].toast_look_out_window); 
+                if (s.windowGazing > 4) { s.lastStatusKey = 'status_gone_window'; s.isGameOver = true; } 
+            }},
+            { id: 'teach_trick', isAvailable: s => s.presence === 'present' && s.mood === 'playful' && !s.isGameOver, execute(s) {
+                showToast(i18n[currentLang].toast_teach_trick); 
+                if (s.affection > 70 && Math.random() > 0.8) { s.lastStatusKey = 'status_trick_success'; s.weirdness += 30; } 
+                else { s.lastStatusKey = 'status_trick_fail'; s.mood = 'annoyed'; } 
+            }},
+            { id: 'meditate', isAvailable: s => !s.isGameOver, execute(s) {
+                s.weirdness += 15; showToast(i18n[currentLang].toast_meditate); 
+                if (s.weirdness > 100) { s.lastStatusKey = 'status_gone_paradox'; s.isGameOver = true; } 
+            }},
+            { id: 'look_under_sofa', isAvailable: s => s.presence === 'hiding' && !s.isGameOver, execute(s) {
+                s.presence = 'present'; s.mood = 'annoyed'; s.affection -= 5; showToast(i18n[currentLang].toast_look_under_sofa);
+            }},
+            { id: 'close_box', isAvailable: s => s.presence === 'present' && !s.isBoxClosed && !s.isGameOver, execute(s) {
+                s.isBoxClosed = true; s.presence = 'in_box'; showToast(i18n[currentLang].toast_close_box); 
+            }},
+            { id: 'open_box', isAvailable: s => s.isBoxClosed && !s.isGameOver, execute(s) {
+                s.isBoxClosed = false; 
+                if (Math.random() > 0.5) { s.presence = 'present'; s.mood = 'annoyed'; s.lastStatusKey = 'status_box_opened_alive'; } 
+                else { s.presence = 'gone'; s.lastStatusKey = 'status_box_opened_gone'; s.isGameOver = true; } 
+                showToast(i18n[currentLang].toast_open_box); 
+            }},
+            { id: 'wait', isAvailable: s => !s.isGameOver, execute(s) {
+                s.ignoreCount++; s.consecutivePats = 0; 
+                if (s.presence === 'in_box') { showToast(i18n[currentLang].toast_wait); if (Math.random() > 0.8) { s.lastStatusKey = 'status_gone_ascended'; s.isGameOver = true; } } 
+                else if (s.presence === 'present') { s.hunger -= 5; if (s.affection < 20 && s.ignoreCount > 3) { s.lastStatusKey = 'status_gone_ran_away'; s.isGameOver = true; } else if (s.ignoreCount > 5) { s.lastStatusKey = 'status_gone_bored'; s.isGameOver = true; } else if (s.affection > 90 && s.hunger > 90 && s.weirdness < 10) { s.lastStatusKey = 'status_gone_normal'; s.isGameOver = true; } } 
+            }},
+            { id: 'restart', isAvailable: s => s.isGameOver, execute(s) {
+                catState = getInitialState(); 
+            }}
         ];
 
         // --- UI & GAME LOOP ---
@@ -344,15 +400,20 @@
             const state = catState;
             let statusKey = state.lastStatusKey;
 
-            if (!state.isGameOver && state.presence === 'present') {
-                if (state.hunger < 30) statusKey = 'status_present_hungry';
-                else if (state.mood === 'sleeping') statusKey = 'status_present_sleeping';
-                else if (state.mood === 'playful') statusKey = 'status_present_playing';
-                else if (state.mood === 'gazing') statusKey = 'status_present_gazing';
-                else if (state.mood === 'annoyed' || state.affection < 40) statusKey = 'status_present_annoyed';
-                else statusKey = 'status_present_content';
-            } else if (!state.isGameOver && state.presence === 'in_box') {
-                statusKey = 'status_in_box';
+            if (!state.isGameOver) {
+                if (state.presence === 'present') {
+                    if (state.hunger < 30) statusKey = 'status_present_hungry';
+                    else if (state.mood === 'sleeping') statusKey = 'status_present_sleeping';
+                    else if (state.mood === 'playful') statusKey = 'status_present_playing';
+                    else if (state.mood === 'gazing') statusKey = 'status_present_gazing';
+                    else if (state.mood === 'biscuits') statusKey = 'status_present_biscuits';
+                    else if (state.mood === 'annoyed' || state.affection < 40) statusKey = 'status_present_annoyed';
+                    else statusKey = 'status_present_content';
+                } else if (state.presence === 'in_box') {
+                    statusKey = 'status_in_box';
+                } else if (state.presence === 'hiding') {
+                    statusKey = 'status_present_hiding';
+                }
             }
             
             catStatusDisplay.style.opacity = 0;
@@ -365,24 +426,19 @@
         function openActionModal() {
             actionList.innerHTML = '';
             actions.forEach(action => {
-                const button = document.createElement('button');
-                button.textContent = i18n[currentLang]['action_' + action.id];
-                button.disabled = !action.isAvailable(catState);
-                if (!catState.usedActions.has(action.id)) {
-                    button.classList.add('action-untried');
+                if (action.isAvailable(catState)) {
+                    const button = document.createElement('button');
+                    button.textContent = i18n[currentLang]['action_' + action.id];
+                    button.addEventListener('click', () => {
+                        action.execute(catState);
+                        if (action.id !== 'pet') catState.consecutivePats = 0;
+                        if (catState.mood !== 'sleeping' && Math.random() > 0.7) catState.mood = 'sleeping';
+                        else if (catState.mood !== 'content' && Math.random() > 0.5) catState.mood = 'content';
+                        updateStatus();
+                        closeActionModal();
+                    });
+                    actionList.appendChild(button);
                 }
-                button.addEventListener('click', () => {
-                    catState.usedActions.add(action.id);
-                    action.execute(catState);
-                    // Reset transient states
-                    if (action.id !== 'pet') catState.consecutivePats = 0;
-                    if (catState.mood !== 'sleeping' && Math.random() > 0.7) catState.mood = 'sleeping';
-                    else if (catState.mood !== 'content' && Math.random() > 0.5) catState.mood = 'content';
-
-                    updateStatus();
-                    closeActionModal();
-                });
-                actionList.appendChild(button);
             });
             actionModal.classList.add('visible');
         }
@@ -394,13 +450,37 @@
         function showToast(message) {
             const toast = document.createElement('div');
             toast.className = 'toast';
-            toast.textContent = " - " + message;
+            toast.textContent = "— " + message;
             toastContainer.appendChild(toast);
-
             setTimeout(() => {
                 toast.classList.add('fade-out');
                 setTimeout(() => toast.remove(), 500);
             }, 4000);
+        }
+
+        function showAmbientText(textKey) {
+            const text = i18n[currentLang][textKey];
+            const el = document.createElement('div');
+            el.className = 'ambient-text';
+            el.textContent = text;
+            el.style.left = `${20 + Math.random() * 60}%`;
+            el.style.top = `${20 + Math.random() * 60}%`;
+            ambientTextContainer.appendChild(el);
+            setTimeout(() => el.remove(), 3000);
+        }
+
+        function triggerRandomEvent() {
+            if (catState.isGameOver || catState.presence !== 'present') return;
+            
+            const rand = Math.random();
+            if (rand < 0.1) showAmbientText('ambient_meow');
+            else if (rand < 0.2) showAmbientText('ambient_purr');
+            else if (rand < 0.25) showAmbientText('ambient_zoomies');
+            else if (rand < 0.3) showAmbientText('ambient_scratch');
+            else if (rand < 0.35 && catState.mood !== 'hiding') {
+                catState.presence = 'hiding';
+                updateStatus();
+            }
         }
 
         function updateLanguage() {
@@ -421,9 +501,7 @@
 
             mainActionBtn.addEventListener('click', openActionModal);
             modalCloseBtn.addEventListener('click', closeActionModal);
-            actionModal.addEventListener('click', (e) => {
-                if (e.target === actionModal) closeActionModal();
-            });
+            actionModal.addEventListener('click', (e) => { if (e.target === actionModal) closeActionModal(); });
 
             document.querySelectorAll('.lang-btn').forEach(btn => {
                 btn.addEventListener('click', e => {
@@ -445,6 +523,8 @@
             });
 
             updateLanguage();
+            clearInterval(ambientTimer);
+            ambientTimer = setInterval(triggerRandomEvent, 12000);
         }
 
         init();
